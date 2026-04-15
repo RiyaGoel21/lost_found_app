@@ -190,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => PostItemScreen(user: widget.user),
+              builder: (_) => const PostItemScreen(),
             ),
           );
           _loadItems();
