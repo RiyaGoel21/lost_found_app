@@ -154,4 +154,30 @@ class StorageService {
       jsonEncode(items.map((i) => i.toJson()).toList()),
     );
   }
+
+  static Future<void> markItemAsFound(String itemId) async {
+    final items = await getItems();
+    final index = items.indexWhere((i) => i.id == itemId);
+    if (index >= 0) {
+      final oldItem = items[index];
+      final updatedItem = ItemModel(
+        id: oldItem.id,
+        title: oldItem.title,
+        type: 'found',
+        category: oldItem.category,
+        location: oldItem.location,
+        description: oldItem.description,
+        imagePath: oldItem.imagePath,
+        postedBy: oldItem.postedBy,
+        email: oldItem.email,
+        date: oldItem.date,
+      );
+      items[index] = updatedItem;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _itemsKey,
+        jsonEncode(items.map((i) => i.toJson()).toList()),
+      );
+    }
+  }
 }

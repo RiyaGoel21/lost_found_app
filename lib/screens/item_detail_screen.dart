@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../models/item_model.dart';
+import '../models/user_model.dart';
+import '../services/storage_service.dart';
 import '../theme.dart';
 
 class ItemDetailScreen extends StatelessWidget {
@@ -204,35 +206,66 @@ class ItemDetailScreen extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // Contact button
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Contact: ${item.email}',
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                            BorderRadius.circular(10),
-                          ),
-                          action: SnackBarAction(
-                            label: 'OK',
-                            textColor: Colors.white,
-                            onPressed: () {},
-                          ),
-                        ),
+                  // Action buttons
+                  FutureBuilder<UserModel?>(
+                    future: StorageService.getSession(),
+                    builder: (context, snapshot) {
+                      final currentUser = snapshot.data;
+                      final isOwner = currentUser?.email == item.email;
+
+                      return Row(
+                        children: [
+                          if (!isOwner) ...[
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Contact: ${item.email}'),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      action: SnackBarAction(
+                                        label: 'OK',
+                                        textColor: Colors.white,
+                                        onPressed: () {},
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: accent,
+                                  minimumSize: const Size(0, 50),
+                                ),
+                                icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                                label: Text('Contact $firstName'),
+                              ),
+                            ),
+                          ],
+                          if (isOwner && isLost) ...[
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  await StorageService.markItemAsFound(item.id);
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Item marked as found ✅')),
+                                  );
+                                  Navigator.pop(context);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.foundColor,
+                                  minimumSize: const Size(0, 50),
+                                ),
+                                icon: const Icon(Icons.check_circle_outline, size: 18),
+                                label: const Text('Mark as Found'),
+                              ),
+                            ),
+                          ],
+                        ],
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accent,
-                    ),
-                    icon: const Icon(
-                        Icons.mail_outline_rounded,
-                        size: 18),
-                    label: Text('Contact $firstName'),
                   ),
 
                   const SizedBox(height: 32),

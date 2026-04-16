@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/firestore_service.dart';
+import '../models/item_model.dart';
 import '../services/storage_service.dart';
 import 'dart:io';
 
-import '../services/auth_service.dart';          // ✅ Firebase Auth
 import '../theme.dart';
 
 class PostItemScreen extends StatefulWidget {
@@ -23,8 +22,6 @@ class _PostItemScreenState extends State<PostItemScreen> {
   String _type = 'lost';
   String? _imagePath;
   bool _loading = false;
-
-  final auth = AuthService(); // ✅ current user
 
   // ── Pick image from gallery ──────────────────────
   Future<void> _pickImage() async {
@@ -131,7 +128,7 @@ class _PostItemScreenState extends State<PostItemScreen> {
     );
   }
 
-  // ── SUBMIT FUNCTION (FULL FIREBASE) ─────────────
+  // ── SUBMIT FUNCTION (LOCAL STORAGE) ─────────────
   Future<void> _submit() async {
     if (_titleCtrl.text.trim().isEmpty ||
         _locationCtrl.text.trim().isEmpty) {
@@ -141,7 +138,9 @@ class _PostItemScreenState extends State<PostItemScreen> {
       return;
     }
 
-    if (auth.currentUser == null) {
+    final user = await StorageService.getSession();
+    if (user == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User not logged in')),
       );
@@ -151,28 +150,20 @@ class _PostItemScreenState extends State<PostItemScreen> {
     setState(() => _loading = true);
 
     try {
-      final storage = StorageService();
-      final firestore = FirestoreService();
-
-      final userId = auth.currentUser!.uid; // ✅ Firebase UID
-
-      String imageUrl = '';
-
-      // Upload image if exists
-      if (_imagePath != null) {
-        final file = File(_imagePath!);
-        imageUrl = await storage.uploadImage(file, userId);
-      }
-
-      // Save to Firestore
-      await firestore.addItem(
+      final item = ItemModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: _titleCtrl.text.trim(),
-        description: _descCtrl.text.trim(),
         type: _type,
+        category: 'Other', // default category
         location: _locationCtrl.text.trim(),
-        imageUrl: imageUrl,
-        userId: userId,
+        description: _descCtrl.text.trim(),
+        imagePath: _imagePath,
+        postedBy: user.name,
+        email: user.email,
+        date: DateTime.now().toIso8601String(),
       );
+
+      await StorageService.addItem(item);
 
       if (!mounted) return;
 
@@ -183,6 +174,7 @@ class _PostItemScreenState extends State<PostItemScreen> {
       Navigator.pop(context);
 
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
